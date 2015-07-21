@@ -72,7 +72,7 @@ class Node{
 		}
 		string nodeType(NodeType type){
 			if (type == NodeType::nCAT)		return "nCAT";
-			if (type == NodeType::nNORMAL)	return "nCAT";
+			if (type == NodeType::nNORMAL)	return "nNORMAL";
 			if (type == NodeType::nOR)		return "nOR";
 			if (type == NodeType::nREPEAT)	return "nREPEAT";
 		}

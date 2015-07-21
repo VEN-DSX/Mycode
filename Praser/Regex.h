@@ -5,6 +5,7 @@
 #include <stack>
 #include "node.h"
 #include "reader.h"
+#include <cassert>
 // #include "error.h"
 
 
@@ -42,8 +43,8 @@ public:
 private:
 	int getType(char c);
 	Node* constructTree	(Reader &reader);
-	Node* handleChar	(char c, Reader&, stack<Node*>&);
-	Node* handleParen	(char c, Reader&, stack<Node*>&);
+	Node* handleParen(char c, Reader&);
+	Node* handleChar	(char c, Reader&, stack<Node*>&);	
 	Node* handleBrack	(char c, Reader&, stack<Node*>&);
 	Node* handleBrace	(char c, Reader&, stack<Node*>&);
 	Node* handleRepeat	(char c, Reader&, stack<Node*>&);
@@ -51,7 +52,7 @@ private:
 	Node* handleOr		(char c, Reader&, stack<Node*>&);
 
 private:
-	
+	stack<char> _operator_stack;
 	Node* _root;
 };
 
@@ -111,7 +112,17 @@ Node* Regex::constructTree(Reader &reader){
 				tmp_node = handleChar(tmp_char, reader, _node_stack);
 				break;
 			case LPAREN:
-				tmp_node = handleParen(tmp_char, reader, _node_stack);
+				_operator_stack.push('(');
+				tmp_node = constructTree(reader);
+				_node_stack.push(tmp_node);
+				break;
+			case RPAREN:
+				if (_operator_stack.top() != '(')
+					cout << "illegal operator:" << _operator_stack.top() << " expect ')'" << endl;
+				assert(_operator_stack.top() == '(');
+				_operator_stack.pop();
+				tmp_node = _node_stack.top(); _node_stack.pop();
+				return tmp_node;
 				break;
 			case LBRACK:
 				tmp_node = handleBrack(tmp_char, reader, _node_stack);
@@ -126,8 +137,10 @@ Node* Regex::constructTree(Reader &reader){
 				break;
 			case BACKLASH:
 				tmp_node = handleChar(reader.read(), reader, _node_stack);
+				break;
 			case DOT://not supported
 				tmp_node = handleDot(reader.read(), reader, _node_stack);
+				break;
 			default:
 				cout << "illegal char" << endl;// error::msg("illegal char");
 				return nullptr;
@@ -199,12 +212,86 @@ int Regex::getType(char c){
 Node* Regex::handleChar(char c, Reader &reader, stack<Node*>& _node_stack){
 	Node *node = new Node;
 	node->addValue(c);	
-	_node_stack.push(node);
-	return node;
+
+
+	
+	if (reader.current() == '+'){
+		reader.read();
+		Node *tmp_node = new Node;
+		tmp_node->setType(NodeType::nREPEAT);
+		tmp_node->setRange(1, -1, true);
+		tmp_node->setChild(node);
+		_node_stack.push(tmp_node);
+		return tmp_node;
+	}
+	else if (reader.current() == '*'){
+		reader.read();
+		Node *tmp_node = new Node;
+		tmp_node->setType(NodeType::nREPEAT);
+		tmp_node->setRange(0, -1, true);
+		tmp_node->setChild(node); 
+		_node_stack.push(tmp_node);
+		return tmp_node;
+	}
+	else{
+		_node_stack.push(node);
+		return node;
+	}
+
+
+
+	
 }
 
+// not used
+Node* Regex::handleParen(char c, Reader &reader){
+	stack<Node*> _node_stack;
+	while (reader.current() != ')'){
+		char tmp_char = reader.read();
+		Node *tmp_node;
 
-Node* Regex::handleParen(char c, Reader &reader, stack<Node*>& _node_stack){ return nullptr; }
+		switch (getType(tmp_char)){
+		case ALPHA:case DIGIT:
+			tmp_node = handleChar(tmp_char, reader, _node_stack);
+			break;
+		case LPAREN:
+			tmp_node = handleParen(tmp_char, reader);
+			break;
+		case LBRACK:
+			tmp_node = handleBrack(tmp_char, reader, _node_stack);
+		case LBRACE:// not supported
+			tmp_node = handleBrace(tmp_char, reader, _node_stack);
+			break;
+		case STAR:case PLUS:
+			tmp_node = handleRepeat(tmp_char, reader, _node_stack);
+			break;
+		case OR:
+			tmp_node = handleOr(tmp_char, reader, _node_stack);
+			break;
+		case BACKLASH:
+			tmp_node = handleChar(reader.read(), reader, _node_stack);
+		case DOT://not supported
+			tmp_node = handleDot(reader.read(), reader, _node_stack);
+		default:
+			cout << "illegal char" << endl;// error::msg("illegal char");
+			return nullptr;
+		}
+		if (_node_stack.size() == 2){
+			_node_stack.pop();
+
+			Node *node = new Node;
+			node->setType(NodeType::nCAT);
+
+			node->addLeft(_node_stack.top()); _node_stack.pop();
+			node->addRight(tmp_node);
+			_node_stack.push(node);
+		}
+	}
+	reader.read();
+	Node *node = _node_stack.top(); _node_stack.pop();
+	return node;
+
+}
 
 Node* Regex::handleBrack(char c, Reader &reader, stack<Node*>& _node_stack){ return nullptr; }
 
