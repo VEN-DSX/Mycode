@@ -1,11 +1,14 @@
-class reader
+#include <string>
+using namespace std;
+class Reader
 {
 public:
-	reader(string str){
+	Reader(){};
+	Reader(string str){
 		_str = str;
 		_index = 0;
 	}
-	~reader();
+	~Reader(){};
 	void init(string str){
 		_str = str;
 		_index = 0;
@@ -14,11 +17,20 @@ public:
 	char read(){
 		return _str[_index++];
 	}
-	int next(){
-		if(_index+1 = _str.length()){
-			return 0;
+	char current(){
+		return _str[_index];
+	}
+	char next(){
+		return _str[_index + 1];
+	}
+	string substr(){
+		return _str.substr(_index);
+	}
+	bool isend(){
+		if (_index + 1 == _str.length()){
+			return 1;
 		}
-		return _str[_index+1];
+		return 0;
 	}
 
 private:
