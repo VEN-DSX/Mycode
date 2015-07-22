@@ -315,14 +315,14 @@ Node* Regex::handleRepeat(char c, Reader &reader, stack<Node*>& _node_stack){
 Node* Regex::handleDot(char c, Reader &reader, stack<Node*>& _node_stack){ return nullptr; }
 
 Node* Regex::handleOr(char c, Reader &reader, stack<Node*>& _node_stack){
-	Node* node = constructTree(reader);
-	Node* tmp_node = _node_stack.top();
+	Node* right_node = constructTree(reader);
+	Node* left_node = _node_stack.top();
 	_node_stack.pop();
-	Node* tmp_node2 = new Node;
-	tmp_node2->setType(NodeType::nOR);
-	tmp_node2->addLeft(tmp_node);
-	tmp_node2->addRight(node);
-	_node_stack.push(tmp_node2);
-	return tmp_node2;
+	Node* node = new Node;
+	node->setType(NodeType::nOR);
+	node->addLeft(left_node);
+	node->addRight(right_node);
+	_node_stack.push(node);
+	return node;
 }
 
