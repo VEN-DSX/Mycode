@@ -100,6 +100,7 @@ void Regex::compile(string str){
 	reader.init(str + "\0");
 	_root = constructTree(reader);
 }
+
 Node* Regex::constructTree(Reader &reader){
 	stack<Node*> _node_stack;
 	while (reader.current() != '\0'){
@@ -208,12 +209,9 @@ int Regex::getType(char c){
 
 }
 
-
 Node* Regex::handleChar(char c, Reader &reader, stack<Node*>& _node_stack){
 	Node *node = new Node;
 	node->addValue(c);	
-
-
 	
 	if (reader.current() == '+'){
 		reader.read();
@@ -293,9 +291,66 @@ Node* Regex::handleParen(char c, Reader &reader){
 
 }
 
-Node* Regex::handleBrack(char c, Reader &reader, stack<Node*>& _node_stack){ return nullptr; }
+Node* Regex::handleBrack(char c, Reader &reader, stack<Node*>& _node_stack){
+	Node *node = new Node;
+	while (reader.current() != ']')
+	{
+		if (reader.next() == '-')
+		{
+			char start = reader.read();
+			reader.moveToNext();
+			char end = reader.read();
+			if (start > end){
+				cout << "error:'" << start << "' expect to be binaryly bigger than '" << end << "'" << endl;
+			}
+			assert(start >= end);
+			while (start <= end){
+				node->addValue(start++);
+			}			
 
-Node* Regex::handleBrace(char c, Reader &reader, stack<Node*>& _node_stack){ return nullptr; }
+		}
+		else if (reader.current() == '\\')
+		{
+			reader.moveToNext();
+			node->addValue(reader.read());
+		}
+		
+	}
+	_node_stack.push(node);
+
+}
+
+Node* Regex::handleBrace(char c, Reader &reader, stack<Node*>& _node_stack){
+	Node *tmp_node = new Node;
+	tmp_node->setType(NodeType::nREPEAT);
+	tmp_node->setChild(_node_stack.top()); _node_stack.pop();
+
+	if (reader.next() == ',')
+	{
+		char start = reader.read();
+		if (!isdigit(start))
+			cout << "error: '" << start << "' expected to be a digit" << endl;
+		assert(isdigit(start));
+		reader.moveToNext();//skip the ','
+		char end = reader.read();
+		if (!isdigit(end))
+			cout << "error: '" << end << "' expected to be a digit" << endl;
+		assert(isdigit(end));
+		if (start > end){
+			cout << "error:'" << start << "' expect to be bigger than '" << end << "'" << endl;
+		}
+		assert(start >= end);
+			
+		tmp_node->setRange(start - '0', end - '0', false);
+
+	}
+	else if (isdigit(reader.current()) && reader.next() == '}' )
+	{
+		tmp_node->setRange(reader.current() - '0', reader.current() - '0', false);
+	}
+
+	_node_stack.push(tmp_node);
+}
 
 Node* Regex::handleRepeat(char c, Reader &reader, stack<Node*>& _node_stack){
 	Node *node = new Node;
@@ -315,14 +370,14 @@ Node* Regex::handleRepeat(char c, Reader &reader, stack<Node*>& _node_stack){
 Node* Regex::handleDot(char c, Reader &reader, stack<Node*>& _node_stack){ return nullptr; }
 
 Node* Regex::handleOr(char c, Reader &reader, stack<Node*>& _node_stack){
-	Node* right_node = constructTree(reader);
-	Node* left_node = _node_stack.top();
+	Node* node = constructTree(reader);
+	Node* tmp_node = _node_stack.top();
 	_node_stack.pop();
-	Node* node = new Node;
-	node->setType(NodeType::nOR);
-	node->addLeft(left_node);
-	node->addRight(right_node);
-	_node_stack.push(node);
-	return node;
+	Node* tmp_node2 = new Node;
+	tmp_node2->setType(NodeType::nOR);
+	tmp_node2->addLeft(tmp_node);
+	tmp_node2->addRight(node);
+	_node_stack.push(tmp_node2);
+	return tmp_node2;
 }
 
