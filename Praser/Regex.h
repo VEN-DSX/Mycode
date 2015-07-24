@@ -43,10 +43,14 @@ public:
 private:
 	int getType(char c);
 	Node* constructTree	(Reader &reader);
-	Node* handleParen(char c, Reader&);
+	Node* handleParen	(char c, Reader&);
+	Node* handleBrace	(Node*, Reader&);
+
+	Node* mergeNode		(Node*, Node*);//merge right and left then return the parent
+	void mergeNode		(Node*, Node*, Node*);//merge right and left to the first node
+
 	Node* handleChar	(char c, Reader&, stack<Node*>&);	
-	Node* handleBrack	(char c, Reader&, stack<Node*>&);
-	Node* handleBrace	(char c, Reader&, stack<Node*>&);
+	Node* handleBrack	(char c, Reader&, stack<Node*>&);	
 	Node* handleRepeat	(char c, Reader&, stack<Node*>&);
 	Node* handleDot		(char c, Reader&, stack<Node*>&);
 	Node* handleOr		(char c, Reader&, stack<Node*>&);
@@ -95,10 +99,30 @@ void Regex::print(){
 	
 }
 
+Node* Regex::mergeNode(Node* right, Node* left){
+	Node* root = new Node;
+	root->addRight(right);
+	root->addLeft(left);
+	right->setParent(root);
+	left->setParent(root);
+	return root;
+}
+
+void Regex::mergeNode(Node* root, Node* right, Node* left){
+	root->addRight(right);
+	root->addLeft(left);
+	right->setParent(root);
+	left->setParent(root);
+	return ;
+}
+
 void Regex::compile(string str){
 	Reader reader;
 	reader.init(str + "\0");
-	_root = constructTree(reader);
+	
+	Node* node_end;
+	node_end->addValue('#');
+	mergeNode(_root, constructTree(reader), node_end);
 }
 
 Node* Regex::constructTree(Reader &reader){
@@ -127,9 +151,6 @@ Node* Regex::constructTree(Reader &reader){
 				break;
 			case LBRACK:
 				tmp_node = handleBrack(tmp_char, reader, _node_stack);
-			case LBRACE:// not supported
-				tmp_node = handleBrace(tmp_char, reader, _node_stack);
-				break;
 			case STAR:case PLUS:
 				tmp_node = handleRepeat(tmp_char, reader, _node_stack);
 				break;
@@ -144,6 +165,7 @@ Node* Regex::constructTree(Reader &reader){
 				break;
 			default:
 				cout << "illegal char" << endl;// error::msg("illegal char");
+				assert(0);
 				return nullptr;
 		}
 		if (_node_stack.size() == 2){
@@ -154,6 +176,7 @@ Node* Regex::constructTree(Reader &reader){
 			
 			node->addLeft(_node_stack.top()); _node_stack.pop(); 
 			node->addRight(tmp_node);
+			tmp_node->setParent(node);
 			_node_stack.push(node);
 		}
 
@@ -231,6 +254,12 @@ Node* Regex::handleChar(char c, Reader &reader, stack<Node*>& _node_stack){
 		_node_stack.push(tmp_node);
 		return tmp_node;
 	}
+	else if (reader.current() == '{'){
+		reader.moveToNext();
+		Node *tmp_node = handleBrace(node,reader);
+		_node_stack.push(tmp_node);
+		return tmp_node;
+	}
 	else{
 		_node_stack.push(node);
 		return node;
@@ -257,9 +286,6 @@ Node* Regex::handleParen(char c, Reader &reader){
 			break;
 		case LBRACK:
 			tmp_node = handleBrack(tmp_char, reader, _node_stack);
-		case LBRACE:// not supported
-			tmp_node = handleBrace(tmp_char, reader, _node_stack);
-			break;
 		case STAR:case PLUS:
 			tmp_node = handleRepeat(tmp_char, reader, _node_stack);
 			break;
@@ -285,7 +311,7 @@ Node* Regex::handleParen(char c, Reader &reader){
 			_node_stack.push(node);
 		}
 	}
-	reader.read();
+	
 	Node *node = _node_stack.top(); _node_stack.pop();
 	return node;
 
@@ -303,7 +329,7 @@ Node* Regex::handleBrack(char c, Reader &reader, stack<Node*>& _node_stack){
 			if (start > end){
 				cout << "error:'" << start << "' expect to be binaryly bigger than '" << end << "'" << endl;
 			}
-			assert(start >= end);
+			assert(start <= end);
 			while (start <= end){
 				node->addValue(start++);
 			}			
@@ -316,14 +342,16 @@ Node* Regex::handleBrack(char c, Reader &reader, stack<Node*>& _node_stack){
 		}
 		
 	}
+	reader.moveToNext();
 	_node_stack.push(node);
+	return node;
 
 }
 
-Node* Regex::handleBrace(char c, Reader &reader, stack<Node*>& _node_stack){
+Node* Regex::handleBrace(Node *child, Reader &reader){
 	Node *tmp_node = new Node;
 	tmp_node->setType(NodeType::nREPEAT);
-	tmp_node->setChild(_node_stack.top()); _node_stack.pop();
+	tmp_node->setChild(child);
 
 	if (reader.next() == ',')
 	{
@@ -339,7 +367,7 @@ Node* Regex::handleBrace(char c, Reader &reader, stack<Node*>& _node_stack){
 		if (start > end){
 			cout << "error:'" << start << "' expect to be bigger than '" << end << "'" << endl;
 		}
-		assert(start >= end);
+		assert(start <= end);
 			
 		tmp_node->setRange(start - '0', end - '0', false);
 
@@ -348,8 +376,12 @@ Node* Regex::handleBrace(char c, Reader &reader, stack<Node*>& _node_stack){
 	{
 		tmp_node->setRange(reader.current() - '0', reader.current() - '0', false);
 	}
-
-	_node_stack.push(tmp_node);
+	else{
+		cout << "error: Synax error on '{'" << endl;
+		assert(0);
+	}
+	reader.read();
+	return tmp_node;
 }
 
 Node* Regex::handleRepeat(char c, Reader &reader, stack<Node*>& _node_stack){

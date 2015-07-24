@@ -32,6 +32,8 @@ class Node{
 		void setRange(int, int, bool);
 		void setType(NodeType);		
 		void setChild(Node*);
+		void setParent(Node*);
+
 		bool isChildNull()		{
 			if (_child == nullptr){
 				return true;
@@ -85,7 +87,11 @@ class Node{
 		int _min;
 		int _max;
 		bool _INF;
-
+		
+		bool nullable;
+		set<Node*> first_pos_;
+		set<Node*> last_pos_;
+		set<Node*> follow_pos_;
 		set<char> _range;
 
 };
@@ -127,4 +133,8 @@ void Node::addRight(Node *node){
 
 void Node::setChild(Node* node){
 	_child = node;
+}
+
+void Node::setParent(Node* node){
+	_parent = node;
 }
