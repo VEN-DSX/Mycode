@@ -2,10 +2,12 @@
 
 #include <cstdlib>
 #include <queue>
+#include <vector>
 #include <stack>
 #include "node.h"
 #include "reader.h"
 #include <cassert>
+#include <algorithm>
 // #include "error.h"
 
 
@@ -55,13 +57,18 @@ private:
 	Node* handleDot		(char c, Reader&, stack<Node*>&);
 	Node* handleOr		(char c, Reader&, stack<Node*>&);
 
+	void getFollowPos(Node*);
+
+	set<Node*> getUnion(set<Node*>, set<Node*>);
+
+
 private:
 	stack<char> _operator_stack;
 	Node* _root;
 };
 
 Regex::Regex(string str){
-	_root = nullptr;	
+
 	compile(str);
 }
 Regex::~Regex(){
@@ -85,8 +92,7 @@ void Regex::print(){
 			
 			if (!node->isLeftChildNull())
 				queue.push(node->getLeft());
-			if (!node->isChildNull())
-				queue.push(node->getChild());
+
 			if (!node->isRightChildNull())
 				queue.push(node->getRight());
 		}
@@ -99,30 +105,28 @@ void Regex::print(){
 	
 }
 
-Node* Regex::mergeNode(Node* right, Node* left){
-	Node* root = new Node;
-	root->addRight(right);
-	root->addLeft(left);
-	right->setParent(root);
-	left->setParent(root);
-	return root;
-}
-
-void Regex::mergeNode(Node* root, Node* right, Node* left){
-	root->addRight(right);
-	root->addLeft(left);
-	right->setParent(root);
-	left->setParent(root);
-	return ;
-}
-
 void Regex::compile(string str){
+	_root = new Node;
 	Reader reader;
 	reader.init(str + "\0");
 	
-	Node* node_end;
+	Node* node_end = new Node;
+	node_end->setType(NodeType::nEnd);
 	node_end->addValue('#');
-	mergeNode(_root, constructTree(reader), node_end);
+	node_end->setParent(_root);
+	node_end->first_pos_.insert(node_end);
+	node_end->last_pos_.insert(node_end);
+
+	_root->setType(NodeType::nCAT);
+	Node* node = constructTree(reader);
+	node->setParent(_root);
+	_root->addLeft(node);
+	_root->addRight(node_end);
+	_root->first_pos_ = _root->getLeft()->first_pos_; 
+	_root->last_pos_ = _root->getRight()->last_pos_;
+	/******Tree finished******/
+
+	return;
 }
 
 Node* Regex::constructTree(Reader &reader){
@@ -174,9 +178,17 @@ Node* Regex::constructTree(Reader &reader){
 			Node *node = new Node;
 			node->setType(NodeType::nCAT);
 			
-			node->addLeft(_node_stack.top()); _node_stack.pop(); 
+			Node *left = _node_stack.top(); _node_stack.pop();
+			node->addLeft(left); 
 			node->addRight(tmp_node);
 			tmp_node->setParent(node);
+			left->setParent(node);
+
+			node->first_pos_ = left->first_pos_;
+			node->last_pos_ = tmp_node->last_pos_;
+			if (left->isNullable()){				
+				node->first_pos_.insert(tmp_node);
+			}
 			_node_stack.push(node);
 		}
 
@@ -234,14 +246,18 @@ int Regex::getType(char c){
 
 Node* Regex::handleChar(char c, Reader &reader, stack<Node*>& _node_stack){
 	Node *node = new Node;
-	node->addValue(c);	
+	node->addValue(c);
+	node->first_pos_.insert(node);
+	node->last_pos_.insert(node);
 	
 	if (reader.current() == '+'){
 		reader.read();
 		Node *tmp_node = new Node;
 		tmp_node->setType(NodeType::nREPEAT);
 		tmp_node->setRange(1, -1, true);
-		tmp_node->setChild(node);
+		tmp_node->addLeft(node);
+		tmp_node->first_pos_ = node->first_pos_;
+		tmp_node->last_pos_ = node->last_pos_;
 		_node_stack.push(tmp_node);
 		return tmp_node;
 	}
@@ -250,13 +266,19 @@ Node* Regex::handleChar(char c, Reader &reader, stack<Node*>& _node_stack){
 		Node *tmp_node = new Node;
 		tmp_node->setType(NodeType::nREPEAT);
 		tmp_node->setRange(0, -1, true);
-		tmp_node->setChild(node); 
+		tmp_node->addLeft(node);
+		tmp_node->first_pos_ = node->first_pos_;
+		tmp_node->last_pos_ = node->last_pos_;
 		_node_stack.push(tmp_node);
 		return tmp_node;
 	}
 	else if (reader.current() == '{'){
 		reader.moveToNext();
+		node->first_pos_ = node->first_pos_;
+		node->last_pos_ = node->last_pos_;
+
 		Node *tmp_node = handleBrace(node,reader);
+		
 		_node_stack.push(tmp_node);
 		return tmp_node;
 	}
@@ -351,7 +373,11 @@ Node* Regex::handleBrack(char c, Reader &reader, stack<Node*>& _node_stack){
 Node* Regex::handleBrace(Node *child, Reader &reader){
 	Node *tmp_node = new Node;
 	tmp_node->setType(NodeType::nREPEAT);
-	tmp_node->setChild(child);
+	tmp_node->addLeft(child);
+	child->setParent(tmp_node);
+
+	tmp_node->first_pos_ = child->first_pos_;
+	tmp_node->last_pos_ = child->last_pos_;
 
 	if (reader.next() == ',')
 	{
@@ -394,12 +420,31 @@ Node* Regex::handleRepeat(char c, Reader &reader, stack<Node*>& _node_stack){
 	else {
 		cout << "error:ilegal char in handleRepeat"<<endl;
 	}
-	node->setChild(_node_stack.top()); _node_stack.pop();
+	Node* tmp = _node_stack.top();
+	node->first_pos_ = tmp->first_pos_;
+	node->last_pos_ = tmp->last_pos_;
+	tmp->setParent(node);
+	node->addLeft(tmp); _node_stack.pop();
 	_node_stack.push(node);
 	return node;
 }
 
 Node* Regex::handleDot(char c, Reader &reader, stack<Node*>& _node_stack){ return nullptr; }
+
+
+set<Node*> Regex::getUnion(set<Node*> a, set<Node*> b){
+	set<Node*>::iterator i_a=a.begin(), i_b=b.begin();
+	set<Node*> res;
+	while (i_a != a.end()){
+		res.insert(*i_a);
+		i_a++;
+	}
+	while (i_b != b.end()){
+		res.insert(*i_b);
+		i_b++;
+	}
+	return res;
+}
 
 Node* Regex::handleOr(char c, Reader &reader, stack<Node*>& _node_stack){
 	Node* node = constructTree(reader);
@@ -409,7 +454,36 @@ Node* Regex::handleOr(char c, Reader &reader, stack<Node*>& _node_stack){
 	tmp_node2->setType(NodeType::nOR);
 	tmp_node2->addLeft(tmp_node);
 	tmp_node2->addRight(node);
+
+	tmp_node->setParent(tmp_node2);
+	node->setParent(tmp_node2);
+
+	tmp_node2->first_pos_ = getUnion(node->getLeft()->first_pos_, tmp_node->getRight()->first_pos_);
+	tmp_node2->last_pos_ = getUnion(node->getLeft()->last_pos_, tmp_node->getRight()->last_pos_);
+
+
 	_node_stack.push(tmp_node2);
 	return tmp_node2;
+}
+
+
+
+void Regex::getFollowPos(Node* root){
+	if (!root->isLeftChildNull())
+		getFollowPos(root->getLeft());
+	if (!root->isRightChildNull())
+		getFollowPos(root->getRight());
+	if (root->getNodeType() == NodeType::nCAT){
+		set<Node*> left = root->getLeft()->last_pos_;
+		set<Node*> right = root->getRight()->first_pos_;
+		
+		for (set<Node*>::iterator i = left.begin(); i != left.end(); i++){
+			for (set<Node*>::iterator j = right.begin(); j != right.end(); j++){
+				//to do
+				*i.follow_pos_.insert(j);
+			}
+		}
+	}
+	return;
 }
 
