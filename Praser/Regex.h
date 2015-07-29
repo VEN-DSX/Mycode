@@ -8,6 +8,7 @@
 #include "reader.h"
 #include <cassert>
 #include <algorithm>
+#include <map>
 // #include "error.h"
 
 
@@ -59,12 +60,13 @@ private:
 
 	void getFollowPos(Node*);
 
-	set<Node*> getUnion(set<Node*>, set<Node*>);
+	set<Node*> getUnion(set<Node*>&,set<Node*>, set<Node*>);
 
 
 private:
 	stack<char> _operator_stack;
 	Node* _root;
+	map<int, Node*> _symbol;
 };
 
 Regex::Regex(string str){
@@ -125,7 +127,8 @@ void Regex::compile(string str){
 	_root->first_pos_ = _root->getLeft()->first_pos_; 
 	_root->last_pos_ = _root->getRight()->last_pos_;
 	/******Tree finished******/
-
+	getFollowPos(_root);
+	
 	return;
 }
 
@@ -249,6 +252,7 @@ Node* Regex::handleChar(char c, Reader &reader, stack<Node*>& _node_stack){
 	node->addValue(c);
 	node->first_pos_.insert(node);
 	node->last_pos_.insert(node);
+	_symbol.insert(pair<int, Node*>::pair(_symbol.size() + 1, node));
 	
 	if (reader.current() == '+'){
 		reader.read();
@@ -432,18 +436,17 @@ Node* Regex::handleRepeat(char c, Reader &reader, stack<Node*>& _node_stack){
 Node* Regex::handleDot(char c, Reader &reader, stack<Node*>& _node_stack){ return nullptr; }
 
 
-set<Node*> Regex::getUnion(set<Node*> a, set<Node*> b){
+set<Node*> Regex::getUnion(set<Node*> &target,set<Node*> a, set<Node*> b){
 	set<Node*>::iterator i_a=a.begin(), i_b=b.begin();
-	set<Node*> res;
 	while (i_a != a.end()){
-		res.insert(*i_a);
+		target.insert(*i_a);
 		i_a++;
 	}
 	while (i_b != b.end()){
-		res.insert(*i_b);
+		target.insert(*i_b);
 		i_b++;
 	}
-	return res;
+	return target;
 }
 
 Node* Regex::handleOr(char c, Reader &reader, stack<Node*>& _node_stack){
@@ -458,8 +461,8 @@ Node* Regex::handleOr(char c, Reader &reader, stack<Node*>& _node_stack){
 	tmp_node->setParent(tmp_node2);
 	node->setParent(tmp_node2);
 
-	tmp_node2->first_pos_ = getUnion(node->getLeft()->first_pos_, tmp_node->getRight()->first_pos_);
-	tmp_node2->last_pos_ = getUnion(node->getLeft()->last_pos_, tmp_node->getRight()->last_pos_);
+	getUnion(tmp_node2->first_pos_, tmp_node2->getLeft()->first_pos_, tmp_node2->getRight()->first_pos_);
+	getUnion(tmp_node2->last_pos_, tmp_node2->getLeft()->last_pos_, tmp_node2->getRight()->last_pos_);
 
 
 	_node_stack.push(tmp_node2);
@@ -480,7 +483,16 @@ void Regex::getFollowPos(Node* root){
 		for (set<Node*>::iterator i = left.begin(); i != left.end(); i++){
 			for (set<Node*>::iterator j = right.begin(); j != right.end(); j++){
 				//to do
-				*i.follow_pos_.insert(j);
+				(*i)->follow_pos_.insert((*j));
+			}
+		}
+	}
+	else if (root->getNodeType() == NodeType::nREPEAT){
+		set<Node*> last = root->last_pos_;
+		set<Node*> first = root->first_pos_;
+		for (auto i = last.begin(); i != last.end(); i++){
+			for (auto j = first.begin(); j != first.end(); j++){
+				(*i)->follow_pos_.insert((*j));
 			}
 		}
 	}
