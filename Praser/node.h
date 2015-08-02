@@ -1,11 +1,16 @@
+#ifndef _NODE_
+#define _NODE_
+
 #include <set>
 #include<sstream>
 using namespace std;
+
 enum NodeType {
 	nNORMAL = 0,
 	nCAT,
 	nOR,
-	nREPEAT
+	nREPEAT,
+	nEnd
 };
 
 
@@ -77,10 +82,27 @@ class Node{
 			if (type == NodeType::nNORMAL)	return "nNORMAL";
 			if (type == NodeType::nOR)		return "nOR";
 			if (type == NodeType::nREPEAT)	return "nREPEAT";
+			if (type == NodeType::nEnd)		return "nEnd";
+		}
+
+		NodeType getNodeType(){
+			return _type;
+		}
+
+		bool isNullable(){
+			return _min==0;
+		}
+
+		bool isSameSet(Node* B){
+			set<char>::iterator a =_range.begin(), b = B->_range.begin();
+			while (*a == *b && (a != _range.end() && b != B->_range.end())){
+				a++; b++;
+			}
+			return (a == _range.end() && b == B->_range.end());
 		}
 	private:
-		Node* _parent;
 		Node* _child;
+		Node* _parent;
 		Node* _left_child;
 		Node* _right_child;
 		NodeType _type;
@@ -89,6 +111,7 @@ class Node{
 		bool _INF;
 		
 		bool nullable;
+public:
 		set<Node*> first_pos_;
 		set<Node*> last_pos_;
 		set<Node*> follow_pos_;
@@ -138,3 +161,7 @@ void Node::setChild(Node* node){
 void Node::setParent(Node* node){
 	_parent = node;
 }
+
+
+
+#endif

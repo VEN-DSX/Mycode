@@ -9,6 +9,7 @@
 #include <cassert>
 #include <algorithm>
 #include <map>
+#include "status.h"
 // #include "error.h"
 
 
@@ -57,16 +58,23 @@ private:
 	Node* handleRepeat	(char c, Reader&, stack<Node*>&);
 	Node* handleDot		(char c, Reader&, stack<Node*>&);
 	Node* handleOr		(char c, Reader&, stack<Node*>&);
+	bool findStatus(Status*);
+
 
 	void getFollowPos(Node*);
+	void makeDFA();
 
-	set<Node*> getUnion(set<Node*>&,set<Node*>, set<Node*>);
+	set<Node*> getUnion(set<Node*>&, set<Node*>, set<Node*>);
+	set<Node*> getUnion(set<Node*>, set<Node*>);
 
 
 private:
 	stack<char> _operator_stack;
 	Node* _root;
-	map<int, Node*> _symbol;
+	map<set<char>,vector<Node*>> _symbol;//store all units
+	Status* _start;
+	vector<Status*> _Dtran;
+	
 };
 
 Regex::Regex(string str){
@@ -128,7 +136,8 @@ void Regex::compile(string str){
 	_root->last_pos_ = _root->getRight()->last_pos_;
 	/******Tree finished******/
 	getFollowPos(_root);
-	
+	makeDFA();
+
 	return;
 }
 
@@ -158,6 +167,7 @@ Node* Regex::constructTree(Reader &reader){
 				break;
 			case LBRACK:
 				tmp_node = handleBrack(tmp_char, reader, _node_stack);
+				break;
 			case STAR:case PLUS:
 				tmp_node = handleRepeat(tmp_char, reader, _node_stack);
 				break;
@@ -201,6 +211,42 @@ Node* Regex::constructTree(Reader &reader){
 
 }
 
+//bugs here
+bool Regex::findStatus(Status* target){
+	for (int i = 0; i < _Dtran.size(); i++){
+		if (_Dtran[i]->same(target)){
+			return true;
+		}
+	}
+	return false;
+}
+
+void Regex::makeDFA(){
+	Status *start = new Status;
+	start->pushSet(_root->first_pos_);
+	queue<Status*> q;
+	q.push(start);
+	_Dtran.push_back(start);
+	_start = start;
+	
+	while (!q.empty()){
+		Status* tmp = q.front(); q.pop();
+		for (auto i = _symbol.begin(); i != _symbol.end();i++){
+			vector<Node*> vec_tmp = i->second;
+			Status* new_status = new Status;
+			for (int j = 0; j < vec_tmp.size(); j++){
+				new_status->pushSet(getUnion(new_status->_nodes, vec_tmp[j]->follow_pos_));
+			}
+			//bugs here
+			if (!new_status->empty() && !findStatus(new_status)){
+				q.push(new_status);
+				for (auto j = i->first.begin(); j != i->first.end(); j++){
+					tmp->_next_status[(*j)] = new_status;
+				}
+			}
+		}
+	}
+}
 int Regex::getType(char c){
 	if (isalpha(c)){
 		return ALPHA;
@@ -252,7 +298,15 @@ Node* Regex::handleChar(char c, Reader &reader, stack<Node*>& _node_stack){
 	node->addValue(c);
 	node->first_pos_.insert(node);
 	node->last_pos_.insert(node);
-	_symbol.insert(pair<int, Node*>::pair(_symbol.size() + 1, node));
+
+	if (_symbol.find(node->_range) == _symbol.end()){
+		vector<Node*> tmp;
+		tmp.push_back(node);
+		_symbol[node->_range] = tmp;
+	}
+	else{
+		_symbol[node->_range].push_back(node);
+	}
 	
 	if (reader.current() == '+'){
 		reader.read();
@@ -369,6 +423,14 @@ Node* Regex::handleBrack(char c, Reader &reader, stack<Node*>& _node_stack){
 		
 	}
 	reader.moveToNext();
+	if (_symbol.find(node->_range) == _symbol.end()){
+		vector<Node*> tmp;
+		tmp.push_back(node);
+		_symbol[node->_range] = tmp;
+	}
+	else{
+		_symbol[node->_range].push_back(node);
+	}
 	_node_stack.push(node);
 	return node;
 
@@ -438,6 +500,20 @@ Node* Regex::handleDot(char c, Reader &reader, stack<Node*>& _node_stack){ retur
 
 set<Node*> Regex::getUnion(set<Node*> &target,set<Node*> a, set<Node*> b){
 	set<Node*>::iterator i_a=a.begin(), i_b=b.begin();
+	while (i_a != a.end()){
+		target.insert(*i_a);
+		i_a++;
+	}
+	while (i_b != b.end()){
+		target.insert(*i_b);
+		i_b++;
+	}
+	return target;
+}
+
+set<Node*> Regex::getUnion(set<Node*> a, set<Node*> b){
+	set<Node*> target;
+	set<Node*>::iterator i_a = a.begin(), i_b = b.begin();
 	while (i_a != a.end()){
 		target.insert(*i_a);
 		i_a++;
