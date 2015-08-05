@@ -1,4 +1,3 @@
-#include "stringtool.hpp"
 #include <iostream>
 #include <iomanip>
 #include <string>

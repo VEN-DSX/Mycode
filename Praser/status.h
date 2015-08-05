@@ -24,12 +24,19 @@ public:
 	}
 	bool same(Status* B){
 		set<Node*>::iterator a = _nodes.begin(), b = B->_nodes.begin();
-		while (*a == *b && (a != _nodes.end() && b != B->_nodes.end())){
+		while ((a != _nodes.end() && b != B->_nodes.end()) && *a == *b ){
 			a++; b++;
 		}
 		return (a == _nodes.end() && b == B->_nodes.end());
 	}
-
+	bool isEnd(){
+		for (auto i = _nodes.begin(); i != _nodes.end(); i++){
+			if ((*i)->getNodeType() == NodeType::nEnd){
+				return true;
+			}
+		}
+		return false;
+	}
 
 	bool operator==(Status);
 

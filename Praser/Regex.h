@@ -58,7 +58,7 @@ private:
 	Node* handleRepeat	(char c, Reader&, stack<Node*>&);
 	Node* handleDot		(char c, Reader&, stack<Node*>&);
 	Node* handleOr		(char c, Reader&, stack<Node*>&);
-	bool findStatus(Status*);
+	Status* findStatus(Status*);
 
 
 	void getFollowPos(Node*);
@@ -67,8 +67,12 @@ private:
 	set<Node*> getUnion(set<Node*>&, set<Node*>, set<Node*>);
 	set<Node*> getUnion(set<Node*>, set<Node*>);
 
+	int getindex(){
+		return ++_counter_index;
+	}
 
 private:
+	int _counter_index;
 	stack<char> _operator_stack;
 	Node* _root;
 	map<set<char>,vector<Node*>> _symbol;//store all units
@@ -78,7 +82,7 @@ private:
 };
 
 Regex::Regex(string str){
-
+	_counter_index = 1;
 	compile(str);
 }
 Regex::~Regex(){
@@ -212,9 +216,18 @@ Node* Regex::constructTree(Reader &reader){
 }
 
 //bugs here
-bool Regex::findStatus(Status* target){
+Status* Regex::findStatus(Status* target){
 	for (int i = 0; i < _Dtran.size(); i++){
 		if (_Dtran[i]->same(target)){
+			return _Dtran[i];
+		}
+	}
+	return nullptr;
+}
+
+bool isin(Status *tmp,Node* node){
+	for (auto i = tmp->_nodes.begin(); i != tmp->_nodes.end(); i++){
+		if ((*i)->index == node->index){
 			return true;
 		}
 	}
@@ -229,23 +242,38 @@ void Regex::makeDFA(){
 	_Dtran.push_back(start);
 	_start = start;
 	
+
+	// logically wrong, should not be this vec_tmp
 	while (!q.empty()){
 		Status* tmp = q.front(); q.pop();
 		for (auto i = _symbol.begin(); i != _symbol.end();i++){
 			vector<Node*> vec_tmp = i->second;
 			Status* new_status = new Status;
 			for (int j = 0; j < vec_tmp.size(); j++){
-				new_status->pushSet(getUnion(new_status->_nodes, vec_tmp[j]->follow_pos_));
+				if (isin(tmp,vec_tmp[j]))
+					new_status->pushSet(getUnion(new_status->_nodes, vec_tmp[j]->follow_pos_));
 			}
-			//bugs here
-			if (!new_status->empty() && !findStatus(new_status)){
-				q.push(new_status);
-				for (auto j = i->first.begin(); j != i->first.end(); j++){
-					tmp->_next_status[(*j)] = new_status;
+			if (!new_status->empty() ){
+				//a new status
+				if (!findStatus(new_status)){
+					q.push(new_status);
+					_Dtran.push_back(new_status);
+					for (auto j = i->first.begin(); j != i->first.end(); j++){
+						tmp->_next_status[(*j)] = new_status;
+					}
 				}
+				else{
+					for (auto j = i->first.begin(); j != i->first.end(); j++){
+						tmp->_next_status[(*j)] = findStatus(new_status);
+					}
+				}
+
 			}
 		}
 	}
+
+
+
 }
 int Regex::getType(char c){
 	if (isalpha(c)){
@@ -296,6 +324,7 @@ int Regex::getType(char c){
 Node* Regex::handleChar(char c, Reader &reader, stack<Node*>& _node_stack){
 	Node *node = new Node;
 	node->addValue(c);
+	node->index = getindex();
 	node->first_pos_.insert(node);
 	node->last_pos_.insert(node);
 
@@ -431,6 +460,7 @@ Node* Regex::handleBrack(char c, Reader &reader, stack<Node*>& _node_stack){
 	else{
 		_symbol[node->_range].push_back(node);
 	}
+	node->index = getindex();
 	_node_stack.push(node);
 	return node;
 
@@ -575,3 +605,13 @@ void Regex::getFollowPos(Node* root){
 	return;
 }
 
+bool Regex::isMatch(string str){
+	Status* current = _start;
+	for (int i = 0; i < str.length(); i++){
+		if (current->_next_status.find(str[i]) != current->_next_status.end())
+			current = current->_next_status[str[i]];
+		else
+			return false;
+	}
+	return current->isEnd();
+}

@@ -112,6 +112,7 @@ class Node{
 		
 		bool nullable;
 public:
+	int index;
 		set<Node*> first_pos_;
 		set<Node*> last_pos_;
 		set<Node*> follow_pos_;

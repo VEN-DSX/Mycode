@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 // #include <pthread.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctime>
@@ -17,13 +18,14 @@
 #include <ctime>
 
 #define KTH 100
+
 using namespace std;
 
 queue<string> que_string_filename;
 mpz_class sum=0;
 int int32_line_total=0;
 bool readfile_finished = false;
-
+sem_t availablefile;
 
 
 
@@ -54,7 +56,8 @@ public:
 /*
 	找到前K个出现频次最大的数据，并输出至文件中
 */
-void findKth(unordered_map<string,int> &umap_string_int_count,int k){
+void findKth(unordered_map<string,int> umap_string_int_count,int k){
+	cout<<"findKth\t"<<umap_string_int_count.size()<<endl;
 	vector<NumCount> min_heap(k);
 	NumCount temp;
 	int c=0;
@@ -67,7 +70,7 @@ void findKth(unordered_map<string,int> &umap_string_int_count,int k){
 			c++;
 		}else if(temp.count > min_heap.front().count){
 			swap(min_heap[0],temp);
-			make_heap(min_heap.begin(),min_heap.end()); // where can be optimize
+			make_heap(min_heap.begin(),min_heap.end()); // where can be optimized
 		}
 	}
 	sort_heap(min_heap.begin(),min_heap.end());
@@ -78,13 +81,16 @@ void findKth(unordered_map<string,int> &umap_string_int_count,int k){
 	stringstream s_s;
 	int asdf=0;
 	for(auto i = min_heap.begin();i!=min_heap.end();i++){
-		s_s<<i->num<<"\t"<<i->count<<endl;
+		s_s<<i->num<<"\t"<<i->count<<"\n";
+		// cout<<i->num<<"\t"<<i->count<<endl;
 		while(++asdf>100){
 			fs_out<<s_s.str();
 			s_s.str("");
 			asdf=0;
 		}
 	}
+	fs_out<<s_s.str();
+	s_s.str("");
 	fs_out.close();
 	return;
 
@@ -123,6 +129,7 @@ void sort_write_file(vector<mpz_class> vec_numbers,int int32_line_temp,int int32
 	s_s.str("");
 	fs_out.close();
 	que_string_filename.push(temp_filename);
+	sem_post(&availablefile);
 	cout<<"Thread end!"<<endl;
 	return;
 }
@@ -171,10 +178,6 @@ void tp1_readintoqueue(){
 	while(fs_in>>tt){
 		
 			int32_line_temp++;
-			// if(q.size() > 500 ){
-			// 	delay();
-			// }
-			// q.push(tt);
 			vec_numbers.push_back(tt);
 			sum+=tt;
 			int32_line_total++;
@@ -218,9 +221,11 @@ void tp1_readintoqueue(){
 
 
 void init(){
+	sem_init(&availablefile, 0, 0);
 	thread  t[4];
 	t[0] = thread(tp1_readintoqueue);
 	t[0].join();
+	sem_destroy(&availablefile);
 	return;
 }
 

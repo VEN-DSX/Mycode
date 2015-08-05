@@ -10,11 +10,20 @@ using namespace std;
 int main()
 {
 	Regex praser;
-	string s;
+	string s; string ss;
+	cout << "input regex s:";
 	while (cin >> s)
 	{
 		praser.compile(s);
-		praser.print();
+		cout << "input text ss:";
+		while (cin >> ss)
+		{			
+			if (ss == "##") break;
+			cout << praser.isMatch(ss) << endl;
+			cout << "input text ss:";
+		}
+		cout << "input regex s:";
+		
 	}
 	system("pause");
 
