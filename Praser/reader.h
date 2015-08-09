@@ -1,3 +1,6 @@
+#ifndef _READER_
+#define _READER_
+
 #include <string>
 using namespace std;
 class Reader
@@ -23,6 +26,9 @@ public:
 	char next(){
 		return _str[_index + 1];
 	}
+	char moveToNext(){
+		return _str[_index++];
+	}
 	string substr(){
 		return _str.substr(_index);
 	}
@@ -38,3 +44,5 @@ private:
 	int _index;
 
 };
+
+#endif

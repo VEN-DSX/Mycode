@@ -1,3 +1,6 @@
+#ifndef _STATUS_
+#define _STATUS_
+
 #include<set>
 #include"node.h"
 #include<map>
@@ -62,3 +65,5 @@ bool operator==(Status A,Status B){
 	}
 	return (a == A._nodes.end() && b == B._nodes.end());
 }
+
+#endif

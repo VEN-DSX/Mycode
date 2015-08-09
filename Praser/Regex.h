@@ -72,7 +72,7 @@ private:
 	}
 
 private:
-	int _counter_index;
+	int _counter_index; //给得到的叶子节点计数
 	stack<char> _operator_stack;
 	Node* _root;
 	map<set<char>,vector<Node*>> _symbol;//store all units
@@ -88,6 +88,14 @@ Regex::Regex(string str){
 Regex::~Regex(){
 }
 
+void Regex::mergeNode(Node* a, Node* b, Node* c){
+	a->addLeft(b);
+	a->addRight(c);
+	a->first_pos_ = b->first_pos_;
+	a->last_pos_ = c->last_pos_;
+	b->setParent(a);
+	c->setParent(a);	
+}
 
 //not finished
 void Regex::print(){
@@ -133,12 +141,8 @@ void Regex::compile(string str){
 
 	_root->setType(NodeType::nCAT);
 	Node* node = constructTree(reader);
-	node->setParent(_root);
-	_root->addLeft(node);
-	_root->addRight(node_end);
-	_root->first_pos_ = _root->getLeft()->first_pos_; 
-	_root->last_pos_ = _root->getRight()->last_pos_;
-	/******Tree finished******/
+	mergeNode(_root, node, node_end);
+	
 	getFollowPos(_root);
 	makeDFA();
 
@@ -196,13 +200,8 @@ Node* Regex::constructTree(Reader &reader){
 			node->setType(NodeType::nCAT);
 			
 			Node *left = _node_stack.top(); _node_stack.pop();
-			node->addLeft(left); 
-			node->addRight(tmp_node);
-			tmp_node->setParent(node);
-			left->setParent(node);
-
-			node->first_pos_ = left->first_pos_;
-			node->last_pos_ = tmp_node->last_pos_;
+			mergeNode(node, left, tmp_node);
+			
 			if (left->isNullable()){				
 				node->first_pos_.insert(tmp_node);
 			}
@@ -215,7 +214,6 @@ Node* Regex::constructTree(Reader &reader){
 
 }
 
-//bugs here
 Status* Regex::findStatus(Status* target){
 	for (int i = 0; i < _Dtran.size(); i++){
 		if (_Dtran[i]->same(target)){
@@ -561,6 +559,7 @@ Node* Regex::handleOr(char c, Reader &reader, stack<Node*>& _node_stack){
 	_node_stack.pop();
 	Node* tmp_node2 = new Node;
 	tmp_node2->setType(NodeType::nOR);
+
 	tmp_node2->addLeft(tmp_node);
 	tmp_node2->addRight(node);
 
@@ -574,8 +573,6 @@ Node* Regex::handleOr(char c, Reader &reader, stack<Node*>& _node_stack){
 	_node_stack.push(tmp_node2);
 	return tmp_node2;
 }
-
-
 
 void Regex::getFollowPos(Node* root){
 	if (!root->isLeftChildNull())
