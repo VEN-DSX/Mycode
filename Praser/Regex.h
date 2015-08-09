@@ -377,7 +377,7 @@ Node* Regex::handleChar(char c, Reader &reader, stack<Node*>& _node_stack){
 	
 }
 
-// not used
+
 Node* Regex::handleParen(char c, Reader &reader){
 	stack<Node*> _node_stack;
 	while (reader.current() != ')'){
