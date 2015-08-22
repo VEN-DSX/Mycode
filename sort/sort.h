@@ -2,7 +2,6 @@
 #define _SORT_ 
 
 #include <vector>
-#include <thread>
 
 using namespace std;
 
@@ -13,6 +12,7 @@ void Swap(T &a,T &b){
 	b = tmp;
 }
 
+//AVG:O(N2) BEST:O(N) WORST:O(N2) SPACE:O(1) STABLE
 template <typename T>
 void BubbleSort(std::vector<T> &_tar){
 	for(int i = 0;i < _tar.size();i++){
@@ -37,6 +37,8 @@ void BubbleSort(std::vector<T> &_tar, int start ,int end){
     }
 }
 
+//AVG:O(N2) BEST:O(N2) WORST:O(N2) SPACE:O(1) UNSTABLE
+//EG:5 8 5 2 9，the first element 5 will exchange with the fourth element 2
 template <typename T>
 void SelectSort(std::vector<T> &_tar){
 	for (int i = 0; i < _tar.size(); ++i)
@@ -67,6 +69,8 @@ void SelectSort(std::vector<T> &_tar, int start ,int end){
     }
 }
 
+
+//AVG:O(N2) BEST:O(N) WORST:O(N2) SPACE:O(1) STABLE
 template <typename T>
 void InsertSort(std::vector<T> &_tar){
 	for (int i = 1; i < _tar.size(); ++i)
@@ -98,6 +102,7 @@ void InsertSort(std::vector<T> &_tar, int start, int end){
 
 
 //quick sort
+//AVG:O(NLOG2N) BEST:O(NLOG2N) WORST:O(N2) SPACE:O(NLOG2N) UNSTABLE
 template <typename T>
 void qsort(std::vector<T> &a, int start, int end)
 {
@@ -251,14 +256,15 @@ void ImpQsortWithBubble(std::vector<T> &a, int start, int end, int step)
     /*将比第一个大的移到高端*/
     }
     a[first] = key;/*枢轴记录到位*/
-    ImpQsortWithSelect(a, start, first-1 ,step);
-    ImpQsortWithSelect(a, first+1, end   ,step);
+    ImpQsortWithBubble(a, start, first-1 ,step);
+    ImpQsortWithBubble(a, first+1, end   ,step);
 }
 
-
-//head sort to do
+//Heap sort
 template <typename T>
-void MakeHeap(){}
+void MakeHeap(std::vector<T> a,int start,int end){
+    
+}
 
 
 
