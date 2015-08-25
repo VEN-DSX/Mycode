@@ -54,18 +54,27 @@ int main(int argc, char const *argv[])
 		start = clock();
 		for(int j=0;j<10;j++){
 			vv = v1;
-			InsertSort(vv,0,i);
+			Qsort(vv,0,i);
 			
 		}
+		printf("Qsort:\t %d \n",	clock() - start);
+
+		start = clock();
+		for(int j=0;j<10;j++){
+			vv = v1;
+			InsertSort(vv,0,i);			
+		}
 		printf("InsertSort:\t %d \n",	clock() - start);
+
+		
 		
 
 		
 
 		// vv = v1;
-		// start = clock();
-		// sort(vv.begin(),vv.end());
-		// printf("std::sort:\t%d \n",	clock() - start);
+		start = clock();
+		sort(vv.begin(),vv.end());
+		printf("std::sort:\t%d \n",	clock() - start);
 
 
 		// vv = v1;

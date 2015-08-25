@@ -2,6 +2,7 @@
 #define _SORT_ 
 
 #include <vector>
+#include <iostream>
 
 using namespace std;
 
@@ -260,10 +261,27 @@ void ImpQsortWithBubble(std::vector<T> &a, int start, int end, int step)
     ImpQsortWithBubble(a, first+1, end   ,step);
 }
 
-//Heap sort
+//Shell sort
 template <typename T>
-void MakeHeap(std::vector<T> a,int start,int end){
-    
+void ShellSort(std::vector<T> &arr)
+{
+    cout<<"shell\n";
+    int i, j, k, temp;
+    //i为增量
+    for(i=arr.size()/2;i>0;i/=2)
+    {
+        for(j=i;j<arr.size();j+=i)
+        {
+            temp = arr[j];
+            k = j;
+            while(k-i>=0 && temp<arr[k-i])
+            {
+                arr[k] = arr[k-i];
+                k -= i;
+            }
+            arr[k] = temp;
+        }
+    }
 }
 
 
